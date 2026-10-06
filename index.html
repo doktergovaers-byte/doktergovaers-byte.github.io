@@ -22,7 +22,7 @@ header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid v
 .penseel .g{background:var(--gb)}.penseel .o{background:var(--ob)}.penseel .r{background:var(--rb)}
 .tabs{display:flex;gap:6px;margin-top:8px}.tabs button{flex:1;padding:7px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:13px;color:var(--mut)}
 .tabs button.actief{background:var(--kop);color:#fff;border-color:var(--kop);font-weight:600}
-main{padding:10px 10px 120px;max-width:760px;margin:0 auto}
+main{padding:10px 10px 170px;max-width:760px;margin:0 auto}
 header>*,footer>*{max-width:740px;margin-left:auto;margin-right:auto}
 .blok{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:14px}
 .blok b{color:var(--kop)}
@@ -53,6 +53,11 @@ header>*,footer>*{max-width:740px;margin-left:auto;margin-right:auto}
 .apart{background:#ECEEF1;border:1px dashed #B8BEC6;border-radius:12px;padding:10px;margin-bottom:8px;color:var(--mut);font-size:13px}
 footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:8px 12px calc(8px + env(safe-area-inset-bottom));font-size:13px;z-index:5}
 footer .w{color:var(--r);font-weight:600;margin-top:3px}
+.klaarknop{display:block;width:100%;margin-top:7px;padding:12px;font-size:16px;font-weight:700;border:none;border-radius:10px;background:var(--g);color:#fff}
+.klaarok{margin-top:6px;color:var(--g);font-weight:700}
+.dl{margin-top:4px;font-weight:600;color:var(--kop)}.dl.voorbij{color:var(--o)}
+.slot{background:#ECEEF1;border:1px solid #B8BEC6;border-radius:10px;padding:8px 10px;margin-top:6px;color:#333;font-weight:600}
+main.vast .dag,main.vast .wknr{cursor:default;opacity:.85}
 .leg{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;font-size:12px;color:var(--mut)}
 .leg span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;background:var(--c)}
 </style></head><body>
@@ -93,6 +98,12 @@ function teken(){
   var info = el('div','blok');
   info.innerHTML = '<b>Wachtjaar ' + j.nr + '</b> · ' + j.van + ' – ' + j.tot + ' · ' + j.n + ' stafleden' +
     (j.voorlopig ? '<br><span style="color:#5B6675">Voorlopig: data kunnen nog wijzigen. Je mag nu al gekende afwezigheden aanduiden.</span>' : '');
+  if (j.vast) info.innerHTML += '<div class="slot">🔒 Deze planning ligt vast – je kunt enkel nog kijken. Je definitieve wachten kreeg je per mail.</div>';
+  else if (j.deadline) info.innerHTML += j.voorbij
+    ? '<div class="dl voorbij">⏰ Deadline voorbij (' + j.deadline + ') – wijzigingen tellen enkel nog zolang de planning niet vastligt.</div>'
+    : '<div class="dl">📅 Invullen tot ' + j.deadline + '</div>';
+  m.className = j.vast ? 'vast' : '';
+  var pz = document.querySelector('.penseel'); if (pz) pz.style.display = j.vast ? 'none' : '';
   m.appendChild(info);
   var u = el('details','blok uitleg'); u.innerHTML = '<summary>Hoe werkt het? (30 sec.)</summary><ul>' +
     '<li>Alles staat standaard op <b>✓ Ja ik kan</b>. Duid enkel aan wat niet of liever niet lukt.</li>' +
@@ -138,7 +149,7 @@ function weekKaart(w){
   var h = el('div','wkop');
   var nr = el('button','wknr','wk ' + w.wk);
   nr.setAttribute('aria-label','Hele week ' + w.wk + ' aanduiden');
-  nr.onclick = function(){ w.dagen.forEach(function(x){ zet(x.d, penseel); }); herteken(w); };
+  nr.onclick = function(){ if (vastJaar()) return; w.dagen.forEach(function(x){ zet(x.d, penseel); }); herteken(w); };
   h.appendChild(nr);
   h.appendChild(el('span','tijd', w.van + ' → ' + w.tot));
   if (w.sp) h.appendChild(el('span','chip sp','⭐ ' + w.sp));
@@ -154,7 +165,7 @@ function weekKaart(w){
     d.setAttribute('role','button');
     d.title = x.d + (x.f ? ' · ' + x.f : '') + (x.v ? ' · ' + x.v : '');
     d.appendChild(el('div','l', x.l)); d.appendChild(el('div','n', x.n + '/' + x.m)); d.appendChild(el('div','s', SYM[y]));
-    d.onclick = function(){ zet(x.d, v(x.d)===penseel && penseel!=='G' ? 'G' : penseel); herteken(w); };
+    d.onclick = function(){ if (vastJaar()) return; zet(x.d, v(x.d)===penseel && penseel!=='G' ? 'G' : penseel); herteken(w); };
     g.appendChild(d);
     if (x.f) feest.push(x.l + ' ' + x.n + '/' + x.m + ': ' + x.f);
   });
@@ -162,7 +173,8 @@ function weekKaart(w){
   if (feest.length) k.appendChild(el('div','feestnaam','● ' + feest.join(' · ')));
   var o = el('div','opm');
   var huidig = (w.k in opmW) ? opmW[w.k] : (D.opm[w.k] || '');
-  if (huidig){ o.appendChild(invoer(w, huidig)); }
+  if (vastJaar()){ if (huidig) o.appendChild(el('span','tijd','💬 ' + huidig)); }
+  else if (huidig){ o.appendChild(invoer(w, huidig)); }
   else { var b = el('button','', '💬 opmerking toevoegen'); b.onclick = function(){ o.textContent=''; var i=invoer(w,''); o.appendChild(i); i.focus(); }; o.appendChild(b); }
   k.appendChild(o);
   return k;
@@ -172,6 +184,7 @@ function invoer(w, waarde){
   i.oninput = function(){ opmW[w.k] = i.value; D.opm[w.k] = i.value; plan(); };
   return i;
 }
+function vastJaar(){ return !!D.jaren[jaarIdx].vast; }
 function zetTeller(c, t){ c.textContent = '👥 ' + t[0] + '/' + t[1] + ' kunnen'; c.className = 'chip tel' + (t[0] <= 3 ? ' krap' : ''); }
 function tellersBijwerken(){ Object.keys(D.tellers).forEach(function(k){ var c=document.getElementById('t-'+k); if(c) zetTeller(c, D.tellers[k]); }); }
 function zet(d, nieuw){ if (nieuw==='G') delete D.voorkeur[d]; else D.voorkeur[d]=nieuw; wijz[d]=nieuw; plan(); }
@@ -192,7 +205,21 @@ function voet(){
   if (zoT && zoR === zoT) w.push('Je blokkeert alle zomerweken.');
   if (D.maxRood && roodDagen > D.maxRood) w.push('Meer dan ' + D.maxRood + ' dagen ✕ aangeduid (maximum).');
   w.forEach(function(t){ f.appendChild(el('div','w','⚠ ' + t)); });
+  if (j.vast) return;
+  if (D.klaar){
+    f.appendChild(el('div','klaarok','✔ Klaar op ' + D.klaar.slice(0,10) + ' – je kunt nog wijzigen tot de planning vastligt.'));
+  } else {
+    var kb = el('button','klaarknop','✔ Ik ben klaar met invullen');
+    kb.onclick = function(){
+      if (teBewaren() || bezig){ nuOfStraks(); }
+      kb.disabled = true; kb.textContent = 'Even geduld…';
+      stuur({actie:'klaar', k:D.code}, function(r){ D.klaar = (r && r.klaar) || 'vandaag'; voet(); },
+        function(){ kb.disabled = false; kb.textContent = '✔ Ik ben klaar met invullen'; status('⚠ niet gelukt – probeer opnieuw', true); });
+    };
+    f.appendChild(kb);
+  }
 }
+function nuOfStraks(){ clearTimeout(timer); bewaar(); }
 
 var traagTimer = null, volgnr = 0, SESSIE = Math.random().toString(36).slice(2, 12);
 /* soort: 'ok' (groen), 'bezig' (oranje), 'fout' (rood) */
@@ -240,6 +267,7 @@ function stuur(payload, ok, fout){
   if (window.google && google.script && google.script.run){
     var r = google.script.run.withSuccessHandler(ok).withFailureHandler(fout);
     if (payload.actie === 'bewaar') r.bewaarVoorkeuren(payload.k, payload.wijz, payload.opm, payload.tweeWeken);
+    else if (payload.actie === 'klaar') r.zetKlaar(payload.k);
     else r.stuurLinkOpnieuw(payload.email);
     return;
   }
