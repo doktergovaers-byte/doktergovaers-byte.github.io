@@ -94,6 +94,15 @@ function teken(){
     '<li>⭐ speciale week · ☀ zomer · paarse stip = feestdag · blauwe streep = schoolvakantie · 👥 = hoeveel collega\'s die week kunnen (zonder namen).</li></ul>' +
     '<div class="leg"><span style="--c:#DDF3E4">ja ik kan</span><span style="--c:#FFE6C2">liever niet</span><span style="--c:#F9D3D3">absoluut niet</span><span style="--c:#F6C343">speciale week</span><span style="--c:#8EC5EC">schoolvakantie</span><span style="--c:#7B4BB7">feestdag</span></div>';
   m.appendChild(u);
+  var bv = el('details','blok uitleg'); bv.innerHTML = '<summary>🔒 Beveiliging &amp; gegevens</summary><ul>' +
+    '<li>Je gegevens staan <b>enkel in een afgeschermd Google-blad</b> in de Google Drive van de beheerder (dr. Govaers). Dat account is beveiligd met <b>tweestapsverificatie</b> en het blad is met niemand gedeeld.</li>' +
+    '<li>Deze pagina <b>bewaart zelf niets</b>. Ze haalt alleen jouw gegevens op via een <b>versleutelde verbinding (https)</b>.</li>' +
+    '<li>Jij ziet enkel <b>je eigen</b> keuzes. Collega\'s zien jouw keuzes niet, enkel een <b>telling per week zonder namen</b> (👥).</li>' +
+    '<li>Je link bevat een <b>persoonlijke code van 24 tekens</b>, die niet te raden is. <b>Stuur je link niet door</b>: wie hem heeft, kan jouw voorkeuren wijzigen.</li>' +
+    '<li>Na <b>20 foute codes per uur</b> blokkeert het invulscherm tijdelijk en krijgt de beheerder een melding.</li>' +
+    '<li>Link kwijt? "Stuur mijn link" mailt <b>enkel naar jouw adres in de stafledenlijst</b>, maximaal 3 keer per dag.</li>' +
+    '<li>De gegevens worden <b>enkel gebruikt voor de wachtplanning</b> van de MKA-groep.</li></ul>';
+  m.appendChild(bv);
   var s = el('div','blok schakel');
   s.appendChild(el('span','', 'Wil je soms 2 weken na elkaar wacht doen?'));
   var sel = el('select'); sel.innerHTML = '<option value="nee">Nee</option><option value="ja">Ja (max. 2)</option>';
