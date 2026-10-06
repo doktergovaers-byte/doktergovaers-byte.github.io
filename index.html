@@ -8,7 +8,14 @@ header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid v
 .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .wie{font-weight:700;font-size:16px}.wie small{font-weight:400;color:var(--mut)}
 .badge{display:inline-block;min-width:34px;text-align:center;padding:2px 6px;border-radius:6px;font-weight:700;font-size:13px}
-#status{font-size:12px;color:var(--mut);white-space:nowrap}#status.fout{color:var(--r);font-weight:700}
+#status{font-size:13px;font-weight:600;white-space:nowrap;padding:4px 10px;border-radius:14px;background:var(--gb);color:var(--g)}
+#status.bezig{background:var(--ob);color:var(--o)}#status.fout{background:var(--rb);color:var(--r)}
+#traag{display:none;background:#FFF4E0;border:1px solid #F0C27A;color:#7A4A00;border-radius:10px;padding:7px 10px;margin-top:8px;font-size:13px;font-weight:600}
+.laden{margin-top:40px;text-align:center;padding:24px 16px}
+.spin{width:38px;height:38px;border:4px solid var(--line);border-top-color:var(--kop);border-radius:50%;margin:0 auto 14px;animation:draai .9s linear infinite}
+@keyframes draai{to{transform:rotate(360deg)}}
+.laden .na{display:none;color:var(--mut);margin-top:10px;font-size:14px}
+.knop{margin-top:14px;font-size:16px;padding:11px 18px;border:none;border-radius:10px;background:var(--kop);color:#fff;font-weight:600}
 .penseel{display:flex;gap:6px;margin-top:8px}
 .penseel button{flex:1;border:2px solid var(--line);background:#fff;border-radius:10px;padding:9px 4px;font-size:14px;font-weight:600;color:var(--ink)}
 .penseel button.actief{border-color:var(--kop);box-shadow:0 0 0 2px var(--kop) inset}
@@ -55,6 +62,7 @@ footer .w{color:var(--r);font-weight:600;margin-top:3px}
     <button class="g" data-v="G">✓ Ja ik kan</button><button class="o" data-v="O">~ Liever niet</button><button class="r actief" data-v="R">✕ Absoluut niet</button>
   </div>
   <div class="tabs" id="tabs"></div>
+  <div id="traag">⏳ Bewaren duurt even (kan tot 30 sec. duren). Je mag verder aanduiden; sluit de pagina nog niet.</div>
 </header>
 <main id="main"></main>
 <footer id="voet"></footer>
@@ -186,17 +194,25 @@ function voet(){
   w.forEach(function(t){ f.appendChild(el('div','w','⚠ ' + t)); });
 }
 
-function status(t, fout){ var s=document.getElementById('status'); s.textContent=t; s.className = fout?'fout':''; }
-function plan(){ status('bewaren…'); clearTimeout(timer); timer = setTimeout(bewaar, 800); }
+var traagTimer = null;
+/* soort: 'ok' (groen), 'bezig' (oranje), 'fout' (rood) */
+function status(t, soort){
+  var s=document.getElementById('status'); s.textContent=t; s.className = soort===true ? 'fout' : (soort||'');
+  var tr=document.getElementById('traag');
+  if (soort==='bezig'){ if(!traagTimer) traagTimer=setTimeout(function(){ tr.style.display='block'; }, 5000); }
+  else { clearTimeout(traagTimer); traagTimer=null; tr.style.display='none'; }
+}
+function teBewaren(){ return Object.keys(wijz).length || Object.keys(opmW).length || tweeW!==null; }
+function plan(){ status('⏳ bewaren…','bezig'); clearTimeout(timer); timer = setTimeout(bewaar, 600); }
 function bewaar(){
   if (bezig){ plan(); return; }
   var a = wijz, b = opmW, c = tweeW; wijz = {}; opmW = {};
-  if (!Object.keys(a).length && !Object.keys(b).length && c===null){ status('✓ alles bewaard'); return; }
+  if (!Object.keys(a).length && !Object.keys(b).length && c===null){ status('✓ alles bewaard','ok'); return; }
   bezig = true;
   stuur({actie:'bewaar', k:D.code, wijz:a, opm:b, tweeWeken:c}, function(r){
-    bezig = false; if (c!==null){ D.tweeWeken = c; tweeW = null; }
+    bezig = false; if (c!==null){ D.tweeWeken = c; if (tweeW===c) tweeW = null; }
     if (r && r.tellers){ D.tellers = r.tellers; tellersBijwerken(); }
-    status(Object.keys(wijz).length || Object.keys(opmW).length ? 'bewaren…' : '✓ bewaard om ' + r.tijd);
+    if (teBewaren()) status('⏳ bewaren…','bezig'); else status('✓ bewaard ' + r.tijd,'ok');
   }, function(e){
     bezig = false;
     Object.keys(a).forEach(function(k){ if(!(k in wijz)) wijz[k]=a[k]; });
@@ -204,7 +220,16 @@ function bewaar(){
     status('⚠ niet bewaard – nieuwe poging…', true); clearTimeout(timer); timer = setTimeout(bewaar, 5000);
   });
 }
-window.addEventListener('beforeunload', function(e){ if (Object.keys(wijz).length || Object.keys(opmW).length || bezig){ e.preventDefault(); e.returnValue=''; } });
+/* Pagina wordt gesloten of de gsm schakelt naar een andere app: wat nog niet verstuurd is, meteen versturen.
+   sendBeacon wordt door de browser afgeleverd, ook nadat de pagina dicht is. */
+function nuVersturen(){
+  if (!D || !teBewaren() || (window.google && google.script && google.script.run) || !navigator.sendBeacon) return;
+  var p = JSON.stringify({actie:'bewaar', k:D.code, wijz:wijz, opm:opmW, tweeWeken:tweeW});
+  if (navigator.sendBeacon(API, new Blob([p], {type:'text/plain'}))){ wijz = {}; opmW = {}; if (tweeW!==null){ D.tweeWeken = tweeW; tweeW = null; } clearTimeout(timer); if (!bezig) status('✓ bewaard','ok'); }
+}
+document.addEventListener('visibilitychange', function(){ if (document.visibilityState==='hidden') nuVersturen(); });
+window.addEventListener('pagehide', nuVersturen);
+window.addEventListener('beforeunload', function(e){ nuVersturen(); if (teBewaren() || bezig){ e.preventDefault(); e.returnValue=''; } });
 document.querySelectorAll('.penseel button').forEach(function(b){
   b.onclick = function(){ penseel = b.getAttribute('data-v');
     document.querySelectorAll('.penseel button').forEach(function(x){ x.classList.toggle('actief', x===b); }); };
@@ -218,7 +243,8 @@ function stuur(payload, ok, fout){
     else r.stuurLinkOpnieuw(payload.email);
     return;
   }
-  fetch(API, {method:'POST', body: JSON.stringify(payload)}).then(function(x){ return x.json(); })
+  // keepalive: de aanvraag loopt door, ook als de pagina intussen gesloten wordt
+  fetch(API, {method:'POST', body: JSON.stringify(payload), keepalive: true}).then(function(x){ return x.json(); })
     .then(function(r){ if (r && r.fout) fout(r.fout); else ok(r); }).catch(fout);
 }
 function linkScherm(tekst){
@@ -235,11 +261,24 @@ function start(){
   if (D){ kop(); teken(); return; }
   var k = new URLSearchParams(location.search).get('k');
   if (!k){ linkScherm('Open deze pagina via je persoonlijke link uit de mail. Link kwijt? Vul je e-mailadres in.'); return; }
-  document.getElementById('main').innerHTML = '<div class="blok" style="margin-top:30px;text-align:center">Even geduld, je gegevens worden geladen…</div>';
+  laden(k);
+}
+function laden(k){
+  var hdr=document.querySelector('header'); hdr.style.display='none';
+  var m=document.getElementById('main');
+  m.innerHTML = '<div class="blok laden"><div class="spin"></div><b style="font-size:17px">Je gegevens worden geladen…</b>' +
+    '<div class="na" id="na">Dit kan tot <b>30 seconden</b> duren als het invulscherm een tijd niet gebruikt werd. Even geduld, sluit de pagina niet.</div></div>';
+  var t1=setTimeout(function(){ var n=document.getElementById('na'); if(n) n.style.display='block'; }, 3000);
+  var klaar=false;
+  var t2=setTimeout(function(){ if(!klaar){ klaar=true; mislukt(); } }, 60000);
+  function mislukt(){ clearTimeout(t1);
+    m.innerHTML = '<div class="blok laden">⚠ <b>De gegevens konden niet geladen worden.</b><p style="color:#5B6675">Controleer je internetverbinding en probeer opnieuw.</p><button class="knop" id="opnieuw">Opnieuw proberen</button></div>';
+    document.getElementById('opnieuw').onclick=function(){ laden(k); }; }
   fetch(API + '?api=data&k=' + encodeURIComponent(k)).then(function(x){ return x.json(); }).then(function(r){
-    if (!r || r.fout){ linkScherm('Deze link is niet (meer) geldig. Vul je e-mailadres in, dan sturen we je persoonlijke link opnieuw.'); return; }
-    D = r; kop(); teken();
-  }).catch(function(){ document.getElementById('main').innerHTML = '<div class="blok" style="margin-top:30px">⚠ De gegevens konden niet geladen worden. Controleer je internetverbinding en probeer opnieuw.</div>'; });
+    if (klaar) return; klaar=true; clearTimeout(t1); clearTimeout(t2);
+    if (!r || r.fout){ linkScherm(r && /Te veel/.test(r.fout) ? r.fout : 'Deze link is niet (meer) geldig. Vul je e-mailadres in, dan sturen we je persoonlijke link opnieuw.'); return; }
+    hdr.style.display=''; D = r; kop(); teken();
+  }).catch(function(){ if (klaar) return; klaar=true; clearTimeout(t2); mislukt(); });
 }
 start();
 </script></body></html>
