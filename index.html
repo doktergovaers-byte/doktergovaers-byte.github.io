@@ -194,7 +194,7 @@ function voet(){
   w.forEach(function(t){ f.appendChild(el('div','w','⚠ ' + t)); });
 }
 
-var traagTimer = null;
+var traagTimer = null, volgnr = 0, SESSIE = Math.random().toString(36).slice(2, 12);
 /* soort: 'ok' (groen), 'bezig' (oranje), 'fout' (rood) */
 function status(t, soort){
   var s=document.getElementById('status'); s.textContent=t; s.className = soort===true ? 'fout' : (soort||'');
@@ -209,7 +209,7 @@ function bewaar(){
   var a = wijz, b = opmW, c = tweeW; wijz = {}; opmW = {};
   if (!Object.keys(a).length && !Object.keys(b).length && c===null){ status('✓ alles bewaard','ok'); return; }
   bezig = true;
-  stuur({actie:'bewaar', k:D.code, wijz:a, opm:b, tweeWeken:c}, function(r){
+  stuur({actie:'bewaar', k:D.code, wijz:a, opm:b, tweeWeken:c, s:SESSIE, n:++volgnr}, function(r){
     bezig = false; if (c!==null){ D.tweeWeken = c; if (tweeW===c) tweeW = null; }
     if (r && r.tellers){ D.tellers = r.tellers; tellersBijwerken(); }
     if (teBewaren()) status('⏳ bewaren…','bezig'); else status('✓ bewaard ' + r.tijd,'ok');
@@ -224,7 +224,7 @@ function bewaar(){
    sendBeacon wordt door de browser afgeleverd, ook nadat de pagina dicht is. */
 function nuVersturen(){
   if (!D || !teBewaren() || (window.google && google.script && google.script.run) || !navigator.sendBeacon) return;
-  var p = JSON.stringify({actie:'bewaar', k:D.code, wijz:wijz, opm:opmW, tweeWeken:tweeW});
+  var p = JSON.stringify({actie:'bewaar', k:D.code, wijz:wijz, opm:opmW, tweeWeken:tweeW, s:SESSIE, n:++volgnr});
   if (navigator.sendBeacon(API, new Blob([p], {type:'text/plain'}))){ wijz = {}; opmW = {}; if (tweeW!==null){ D.tweeWeken = tweeW; tweeW = null; } clearTimeout(timer); if (!bezig) status('✓ bewaard','ok'); }
 }
 document.addEventListener('visibilitychange', function(){ if (document.visibilityState==='hidden') nuVersturen(); });
@@ -243,9 +243,17 @@ function stuur(payload, ok, fout){
     else r.stuurLinkOpnieuw(payload.email);
     return;
   }
-  // keepalive: de aanvraag loopt door, ook als de pagina intussen gesloten wordt
-  fetch(API, {method:'POST', body: JSON.stringify(payload), keepalive: true}).then(function(x){ return x.json(); })
-    .then(function(r){ if (r && r.fout) fout(r.fout); else ok(r); }).catch(fout);
+  // keepalive: de aanvraag loopt door, ook als de pagina intussen gesloten wordt.
+  // Bewaren: geen antwoord na 4 en 9 sec. → dezelfde vraag opnieuw (de server voert elke bewaring maar één keer uit, dankzij s + n).
+  var klaar = false, gestuurd = 0, mis = 0, laatsteFout = null, timers = [];
+  function een(){ gestuurd++;
+    fetch(API, {method:'POST', body: JSON.stringify(payload), keepalive: true}).then(function(x){ return x.json(); })
+      .then(function(r){ if (klaar) return; if (r && r.fout){ klaar = true; timers.forEach(clearTimeout); fout(r.fout); } else { klaar = true; timers.forEach(clearTimeout); ok(r); } })
+      .catch(function(e){ laatsteFout = e; if (++mis >= 3 && !klaar){ klaar = true; fout(e); } });
+  }
+  een();
+  if (payload.actie === 'bewaar'){ timers.push(setTimeout(function(){ if(!klaar) een(); }, 4000)); timers.push(setTimeout(function(){ if(!klaar) een(); }, 9000)); }
+  else mis = 2;
 }
 function linkScherm(tekst){
   document.querySelector('header').style.display='none';
@@ -267,18 +275,27 @@ function laden(k){
   var hdr=document.querySelector('header'); hdr.style.display='none';
   var m=document.getElementById('main');
   m.innerHTML = '<div class="blok laden"><div class="spin"></div><b style="font-size:17px">Je gegevens worden geladen…</b>' +
-    '<div class="na" id="na">Dit kan tot <b>30 seconden</b> duren als het invulscherm een tijd niet gebruikt werd. Even geduld, sluit de pagina niet.</div></div>';
+    '<div class="na" id="na">Dit kan soms tot <b>30 seconden</b> duren. Even geduld, sluit de pagina niet.</div></div>';
   var t1=setTimeout(function(){ var n=document.getElementById('na'); if(n) n.style.display='block'; }, 3000);
   var klaar=false;
   var t2=setTimeout(function(){ if(!klaar){ klaar=true; mislukt(); } }, 60000);
   function mislukt(){ clearTimeout(t1);
     m.innerHTML = '<div class="blok laden">⚠ <b>De gegevens konden niet geladen worden.</b><p style="color:#5B6675">Controleer je internetverbinding en probeer opnieuw.</p><button class="knop" id="opnieuw">Opnieuw proberen</button></div>';
     document.getElementById('opnieuw').onclick=function(){ laden(k); }; }
-  fetch(API + '?api=data&k=' + encodeURIComponent(k)).then(function(x){ return x.json(); }).then(function(r){
-    if (klaar) return; klaar=true; clearTimeout(t1); clearTimeout(t2);
+  // Google antwoordt soms traag (een nieuwe "server" die opstart). Daarom: geen antwoord na 3 en 7 sec.
+  // → dezelfde vraag nog eens sturen; het eerste antwoord telt. (Ophalen verandert niets, dus dit is veilig.)
+  var fouten=0, pogingen=0;
+  function vraag(){ pogingen++;
+    fetch(API + '?api=data&k=' + encodeURIComponent(k) + '&p=' + pogingen).then(function(x){ return x.json(); }).then(ontvangen)
+      .catch(function(){ if (++fouten >= pogingen && !klaar && pogingen >= 3){ klaar=true; clearTimeout(t2); mislukt(); } });
+  }
+  var h1=setTimeout(function(){ if(!klaar) vraag(); }, 3000), h2=setTimeout(function(){ if(!klaar) vraag(); }, 7000);
+  vraag();
+  function ontvangen(r){
+    if (klaar) return; klaar=true; clearTimeout(t1); clearTimeout(t2); clearTimeout(h1); clearTimeout(h2);
     if (!r || r.fout){ linkScherm(r && /Te veel/.test(r.fout) ? r.fout : 'Deze link is niet (meer) geldig. Vul je e-mailadres in, dan sturen we je persoonlijke link opnieuw.'); return; }
     hdr.style.display=''; D = r; kop(); teken();
-  }).catch(function(){ if (klaar) return; klaar=true; clearTimeout(t2); mislukt(); });
+  }
 }
 start();
 </script></body></html>
