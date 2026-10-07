@@ -53,6 +53,20 @@ header>*,footer>*{max-width:740px;margin-left:auto;margin-right:auto}
 .apart{background:#ECEEF1;border:1px dashed #B8BEC6;border-radius:12px;padding:10px;margin-bottom:8px;color:var(--mut);font-size:13px}
 footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:8px 12px calc(8px + env(safe-area-inset-bottom));font-size:13px;z-index:5}
 footer .w{color:var(--r);font-weight:600;margin-top:3px}
+.mw .kaart{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.mw .kaart.vraag{border-left:6px solid #F0A030;background:#FFFBF2}.mw .kaart.uit{border-left:6px solid var(--kop)}
+.mw .t{font-weight:700;color:var(--kop)}.mw .sub{font-size:12.5px;color:var(--mut)}
+.mw .knoppen{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.mw button.k{border:1px solid var(--kop);background:#fff;color:var(--kop);border-radius:9px;padding:7px 10px;font-size:13.5px;font-weight:600}
+.mw button.k.hoofd{background:var(--kop);color:#fff}.mw button.k.nee{border-color:var(--r);color:var(--r)}
+.mw button.k:disabled{opacity:.5}
+.mw .lijst label{display:flex;gap:8px;align-items:flex-start;padding:7px 4px;border-top:1px solid var(--line);font-size:14px}
+.mw .lijst label.uit{opacity:.55}
+.mw .w8{color:#9A5B00;font-size:12px;display:block}.mw .bol{width:12px;height:12px;border-radius:50%;display:inline-block;margin-top:4px;flex:0 0 12px}
+.mw h3{font-size:15px;color:var(--kop);margin:14px 2px 6px}
+.mw .melding{background:var(--gb);color:var(--g);font-weight:700;border-radius:10px;padding:8px 10px;margin-bottom:8px}
+.mw .fout{background:var(--rb);color:var(--r)}
+.mw textarea{width:100%;font-size:15px;border:1px solid var(--line);border-radius:8px;padding:7px;margin-top:6px}
 .klaarknop{display:block;width:100%;margin-top:7px;padding:12px;font-size:16px;font-weight:700;border:none;border-radius:10px;background:var(--g);color:#fff}
 .klaarok{margin-top:6px;color:var(--g);font-weight:700}
 .dl{margin-top:4px;font-weight:600;color:var(--kop)}.dl.voorbij{color:var(--o)}
@@ -80,11 +94,17 @@ function el(t, c, txt){ var e=document.createElement(t); if(c) e.className=c; if
 function v(d){ return D.voorkeur[d] || 'G'; }
 function weekStatus(w){ var s='G'; w.dagen.forEach(function(x){ var y=v(x.d); if(y==='R') s='R'; else if(y==='O' && s!=='R') s='O'; }); return s; }
 
+function heeftVast(){ return D.jaren.some(function(j){ return j.vast; }); }
 function kop(){
   var wie = document.getElementById('wie'); wie.textContent='';
   var b = el('span','badge',D.initialen); b.style.background = D.kleur || '#ddd';
   wie.appendChild(b); wie.appendChild(document.createTextNode(' ' + D.naam + ' '));
   var t = document.getElementById('tabs'); t.textContent='';
+  if (heeftVast()){
+    var mb = el('button', jaarIdx===-1?'actief':'', '📋 Mijn wachten');
+    mb.onclick = function(){ jaarIdx=-1; kop(); teken(); window.scrollTo(0,0); };
+    t.appendChild(mb);
+  }
   D.jaren.forEach(function(j, i){
     var bt = el('button', i===jaarIdx?'actief':'', 'Wachtjaar ' + j.nr + (j.voorlopig ? ' (voorlopig)' : ''));
     bt.onclick = function(){ jaarIdx=i; kop(); teken(); window.scrollTo(0,0); };
@@ -94,6 +114,7 @@ function kop(){
 
 function teken(){
   var m = document.getElementById('main'); m.textContent='';
+  if (jaarIdx === -1){ tekenMijn(); return; }
   var j = D.jaren[jaarIdx];
   var info = el('div','blok');
   info.innerHTML = '<b>Wachtjaar ' + j.nr + '</b> · ' + j.van + ' – ' + j.tot + ' · ' + j.n + ' stafleden' +
@@ -184,13 +205,14 @@ function invoer(w, waarde){
   i.oninput = function(){ opmW[w.k] = i.value; D.opm[w.k] = i.value; plan(); };
   return i;
 }
-function vastJaar(){ return !!D.jaren[jaarIdx].vast; }
+function vastJaar(){ return jaarIdx === -1 || !!D.jaren[jaarIdx].vast; }
 function zetTeller(c, t){ c.textContent = '👥 ' + t[0] + '/' + t[1] + ' kunnen'; c.className = 'chip tel' + (t[0] <= 3 ? ' krap' : ''); }
 function tellersBijwerken(){ Object.keys(D.tellers).forEach(function(k){ var c=document.getElementById('t-'+k); if(c) zetTeller(c, D.tellers[k]); }); }
 function zet(d, nieuw){ if (nieuw==='G') delete D.voorkeur[d]; else D.voorkeur[d]=nieuw; wijz[d]=nieuw; plan(); }
 function herteken(w){ var oud=document.getElementById('w-'+w.k); oud.parentNode.replaceChild(weekKaart(w), oud); voet(); }
 
 function voet(){
+  if (jaarIdx === -1){ document.getElementById('voet').textContent = 'Vragen? Antwoord op een mail van Wachtplanning MKA.'; return; }
   var j = D.jaren[jaarIdx], rood=0, oranje=0, spR=0, spT=0, zoR=0, zoT=0, roodDagen=0;
   j.weken.forEach(function(w){ if (w.soort!=='WACHT') return; var s=weekStatus(w);
     if (s==='R') rood++; else if (s==='O') oranje++;
@@ -268,6 +290,7 @@ function stuur(payload, ok, fout){
     var r = google.script.run.withSuccessHandler(ok).withFailureHandler(fout);
     if (payload.actie === 'bewaar') r.bewaarVoorkeuren(payload.k, payload.wijz, payload.opm, payload.tweeWeken);
     else if (payload.actie === 'klaar') r.zetKlaar(payload.k);
+    else if (payload.actie === 'wissel') r.wisselActie(payload);
     else r.stuurLinkOpnieuw(payload.email);
     return;
   }
@@ -283,6 +306,133 @@ function stuur(payload, ok, fout){
   if (payload.actie === 'bewaar'){ timers.push(setTimeout(function(){ if(!klaar) een(); }, 4000)); timers.push(setTimeout(function(){ if(!klaar) een(); }, 9000)); }
   else mis = 2;
 }
+/* ================= Mijn wachten & wisselen (fase 6b) ================= */
+var M = null, mMelding = '', mFout = false;
+function wissel(sub, extra, ok){
+  var p = Object.assign({actie:'wissel', sub:sub, k:D.code}, extra||{});
+  status('⏳ even geduld…','bezig');
+  stuur(p, function(r){ status('✓ klaar','ok'); if (r && r.mijn) M = r.mijn; mMelding = (r && r.melding) || ''; mFout = false; if (ok) ok(r); else tekenMijn(); },
+    function(e){ status('⚠ niet gelukt', true); mMelding = (e && e.message) || String(e || 'Er ging iets mis.'); mFout = true; tekenMijn(); });
+}
+function tekenMijn(){
+  var pz = document.querySelector('.penseel'); if (pz) pz.style.display='none';
+  var m = document.getElementById('main'); m.textContent=''; m.className='mw';
+  if (!M){ m.appendChild(el('div','blok','Je wachten worden geladen…')); wissel('lijst'); voet(); return; }
+  if (mMelding){ m.appendChild(el('div','melding' + (mFout?' fout':''), mMelding)); }
+  var u = el('details','blok uitleg'); u.innerHTML = '<summary>⇄ Hoe wisselen? (30 sec.)</summary><ol style="margin:6px 0 0;padding-left:18px;color:#5B6675">' +
+    '<li>Tik bij je wacht op <b>⇄ Wissel aanvragen</b> en vink aan welke collega\'s je vraag krijgen (🟢 kon die week · 🟠 liever niet · 🔴 kon niet).</li>' +
+    '<li>Je collega kiest welke van zijn wachten hij in ruil aanbiedt – soms meerdere.</li>' +
+    '<li>Jij krijgt een mail, kiest één aanbod en tikt <b>Bevestig ruil</b>. Klaar: jullie krijgen allebei een nieuwe lijst en agenda-bestand.</li>' +
+    '<li>⚠ Breekt een ruil een regel (bv. 2 weken na elkaar)? Dan zie je dat vooraf en beslis je zelf.</li>' +
+    '<li>Ruilen kan enkel even groot en van hetzelfde soort: week ⇄ week, Kerst/Nieuwjaar ⇄ Kerst/Nieuwjaar' + (M.dagruil ? ', nacht ⇄ nacht, weekend-/feestdag ⇄ weekend-/feestdag' : '') + '. Een vraag vervalt na 14 dagen.</li></ol>';
+  m.appendChild(u);
+  // vragen aan mij
+  if (M.inn.length){
+    m.appendChild(el('h3','', '📨 Vragen aan jou'));
+    M.inn.forEach(function(v){ m.appendChild(kaartIn(v)); });
+  }
+  if (M.uit.length){
+    m.appendChild(el('h3','', '📤 Jouw wisselvragen'));
+    M.uit.forEach(function(v){ m.appendChild(kaartUit(v)); });
+  }
+  m.appendChild(el('h3','', '📋 Mijn wachten'));
+  if (!M.momenten.length) m.appendChild(el('div','blok','Je hebt geen komende wachten.'));
+  M.momenten.forEach(function(mo){ m.appendChild(kaartMoment(mo)); });
+  voet();
+}
+var SYMN = ['🟢 kon die week','🟠 liever niet','🔴 kon NIET'];
+function kaartIn(v){
+  var k = el('div','kaart vraag');
+  k.appendChild(el('div','t', v.van + ' vraagt: ' + v.label));
+  k.appendChild(el('div','sub', v.tijd + ' · jij: ' + ['✓ ja ik kan','~ liever niet','✕ absoluut niet'][v.mijnNiveau] + ' · vervalt ' + v.vervalt.split('-').reverse().join('/')));
+  if (v.boodschap) k.appendChild(el('div','sub','💬 "' + v.boodschap + '"'));
+  if (v.antwoord) k.appendChild(el('div','sub', v.antwoord.nee ? '➜ Je antwoordde: kan niet (je mag nog aanbieden).' : '➜ Je bood al aan – je mag je aanbod aanpassen.'));
+  var l = el('div','lijst');
+  if (!v.opties.length) l.appendChild(el('div','sub','Je hebt geen passende wacht om in ruil te geven.'));
+  v.opties.forEach(function(o){
+    var lab = el('label'); var c = el('input'); c.type='checkbox'; c.value=o.key;
+    if (v.antwoord && v.antwoord.keys && v.antwoord.keys.indexOf(o.key)>=0) c.checked = true;
+    lab.appendChild(c); var tx = el('span'); tx.appendChild(el('b','', o.label)); tx.appendChild(el('span','sub',' · ' + o.tijd));
+    if (o.niveauA===0) tx.appendChild(el('span','w8','🟢 ' + v.van.split(' ')[0] + ' kon die week'));
+    o.waarsch.forEach(function(w){ tx.appendChild(el('span','w8', w)); });
+    lab.appendChild(tx); l.appendChild(lab);
+  });
+  k.appendChild(l);
+  var kn = el('div','knoppen');
+  var a = el('button','k hoofd','Aanbieden'); a.disabled = !v.opties.length;
+  a.onclick = function(){ var keys = [].slice.call(l.querySelectorAll('input:checked')).map(function(x){ return x.value; });
+    if (!keys.length){ mMelding='Vink minstens één van je wachten aan.'; mFout=true; tekenMijn(); return; }
+    a.disabled=true; wissel('aanbod', {id:v.id, keys:keys}); };
+  var n = el('button','k nee','Ik kan niet'); n.onclick = function(){ n.disabled=true; wissel('aanbod', {id:v.id, nee:true}); };
+  kn.appendChild(a); kn.appendChild(n); k.appendChild(kn);
+  return k;
+}
+function kaartUit(v){
+  var k = el('div','kaart uit');
+  k.appendChild(el('div','t', 'Jij vraagt: ' + v.label));
+  k.appendChild(el('div','sub', v.tijd + ' · gevraagd aan ' + v.aan.join(', ') + ' · vervalt ' + v.vervalt.split('-').reverse().join('/')));
+  var l = el('div','lijst'), kanKiezen = false;
+  if (!v.antwoorden.length) l.appendChild(el('div','sub','⏳ Nog geen antwoord.'));
+  v.antwoorden.forEach(function(a){
+    if (a.nee){ l.appendChild(el('div','sub','✖ ' + a.naam + ': kan niet')); return; }
+    a.opties.forEach(function(o){
+      kanKiezen = true;
+      var lab = el('label'); var r = el('input'); r.type='radio'; r.name='kies-'+v.id; r.value = a.b + '§' + o.key;
+      lab.appendChild(r); var tx = el('span'); tx.appendChild(el('b','', a.naam + ' geeft ' + o.label)); tx.appendChild(el('span','sub',' · ' + o.tijd));
+      o.waarsch.forEach(function(w){ tx.appendChild(el('span','w8', w)); });
+      lab.appendChild(tx); l.appendChild(lab);
+    });
+  });
+  k.appendChild(l);
+  var kn = el('div','knoppen');
+  if (kanKiezen){
+    var b = el('button','k hoofd','✔ Bevestig ruil');
+    b.onclick = function(){ var r = l.querySelector('input:checked');
+      if (!r){ mMelding='Kies eerst één aanbod.'; mFout=true; tekenMijn(); return; }
+      var w8 = r.parentNode.querySelectorAll('.w8').length;
+      if (w8 && b.textContent.indexOf('toch')<0){ b.textContent='⚠ Ik heb de waarschuwing gelezen – toch ruilen'; return; }
+      var p = r.value.split('§'); b.disabled=true; wissel('kies', {id:v.id, b:p[0], key:p[1]}); };
+    kn.appendChild(b);
+  }
+  var x = el('button','k nee','Vraag intrekken'); x.onclick = function(){ x.disabled=true; wissel('annuleer', {id:v.id}); };
+  kn.appendChild(x); k.appendChild(kn);
+  return k;
+}
+function kaartMoment(mo){
+  var k = el('div','kaart');
+  k.appendChild(el('div','t', mo.label)); k.appendChild(el('div','sub', mo.tijd + (mo.later ? ' · (later wachtjaar)' : '')));
+  var kn = el('div','knoppen'), paneel = el('div');
+  mo.keys.forEach(function(ky){
+    if (ky.open){ kn.appendChild(el('span','sub','⏳ wisselvraag loopt (' + ky.label + ')')); return; }
+    var b = el('button','k', ky.label === 'hele week' ? '⇄ Wissel aanvragen' : '⇄ ' + ky.label);
+    b.onclick = function(){ paneel.textContent=''; paneel.appendChild(el('div','sub','Collega\'s worden gezocht…'));
+      wissel('kand', {key:ky.key}, function(r){ toonKandidaten(paneel, ky, r.kandidaten || []); }); };
+    kn.appendChild(b);
+  });
+  k.appendChild(kn); k.appendChild(paneel);
+  return k;
+}
+function toonKandidaten(p, ky, lijst){
+  p.textContent='';
+  p.appendChild(el('div','sub','Wie krijgt je vraag? (' + (ky.label==='hele week' ? 'hele week' : ky.label) + ')'));
+  var l = el('div','lijst');
+  lijst.forEach(function(c){
+    var lab = el('label', c.kanRuilen ? '' : 'uit'); var x = el('input'); x.type='checkbox'; x.value=c.id; x.disabled = !c.kanRuilen;
+    lab.appendChild(x); lab.appendChild(el('span','bol')); lab.lastChild.style.background = ['#1E8E4E','#F0A030','#C62828'][c.niveau];
+    var tx = el('span'); tx.appendChild(el('b','', c.naam)); tx.appendChild(el('span','sub',' · ' + SYMN[c.niveau]));
+    if (!c.kanRuilen) tx.appendChild(el('span','w8','geen passende wacht om terug te geven'));
+    c.waarsch.forEach(function(w){ tx.appendChild(el('span','w8', w)); });
+    lab.appendChild(tx); l.appendChild(lab);
+  });
+  p.appendChild(l);
+  var t = el('textarea'); t.rows=2; t.maxLength=300; t.placeholder='Korte boodschap (optioneel), bv. "congres in Gent"'; p.appendChild(t);
+  var kn = el('div','knoppen'), b = el('button','k hoofd','Verstuur vraag');
+  b.onclick = function(){ var aan = [].slice.call(l.querySelectorAll('input:checked')).map(function(x){ return x.value; });
+    if (!aan.length){ b.textContent='Vink minstens één collega aan'; return; }
+    b.disabled=true; wissel('vraag', {key:ky.key, aan:aan, boodschap:t.value}); };
+  var a = el('button','k','Annuleren'); a.onclick = function(){ p.textContent=''; };
+  kn.appendChild(b); kn.appendChild(a); p.appendChild(kn);
+}
 function linkScherm(tekst){
   document.querySelector('header').style.display='none';
   var m = document.getElementById('main'); m.innerHTML =
@@ -294,7 +444,7 @@ function linkScherm(tekst){
       function(){ document.getElementById('ms').textContent='Er ging iets mis. Probeer later opnieuw.'; b.disabled=false; b.textContent='Stuur mijn link'; }); };
 }
 function start(){
-  if (D){ kop(); teken(); return; }
+  if (D){ if (heeftVast()) jaarIdx = -1; kop(); teken(); return; }
   var k = new URLSearchParams(location.search).get('k');
   if (!k){ linkScherm('Open deze pagina via je persoonlijke link uit de mail. Link kwijt? Vul je e-mailadres in.'); return; }
   laden(k);
@@ -322,7 +472,7 @@ function laden(k){
   function ontvangen(r){
     if (klaar) return; klaar=true; clearTimeout(t1); clearTimeout(t2); clearTimeout(h1); clearTimeout(h2);
     if (!r || r.fout){ linkScherm(r && /Te veel/.test(r.fout) ? r.fout : 'Deze link is niet (meer) geldig. Vul je e-mailadres in, dan sturen we je persoonlijke link opnieuw.'); return; }
-    hdr.style.display=''; D = r; kop(); teken();
+    hdr.style.display=''; D = r; if (heeftVast()) jaarIdx = -1; kop(); teken();
   }
 }
 start();
