@@ -20,7 +20,7 @@ header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid v
 .penseel button{flex:1;border:2px solid var(--line);background:#fff;border-radius:10px;padding:9px 4px;font-size:14px;font-weight:600;color:var(--ink)}
 .penseel button.actief{border-color:var(--kop);box-shadow:0 0 0 2px var(--kop) inset}
 .penseel .g{background:var(--gb)}.penseel .o{background:var(--ob)}.penseel .r{background:var(--rb)}
-.tabs{display:flex;gap:6px;margin-top:8px}.tabs button{flex:1;padding:7px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:13px;color:var(--mut)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.voorl{margin-top:6px;padding:7px 9px;border-radius:8px;background:#FFF4D6;border:1px solid #F0C36D;color:#6B4E00}.tabs button{flex:1 1 28%;min-width:0;padding:7px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:13px;color:var(--mut)}
 .tabs button.actief{background:var(--kop);color:#fff;border-color:var(--kop);font-weight:600}
 main{padding:10px 10px 170px;max-width:760px;margin:0 auto}
 header>*,footer>*{max-width:740px;margin-left:auto;margin-right:auto}
@@ -106,7 +106,7 @@ function kop(){
     t.appendChild(mb);
   }
   D.jaren.forEach(function(j, i){
-    var bt = el('button', i===jaarIdx?'actief':'', 'Wachtjaar ' + j.nr + (j.voorlopig ? ' (voorlopig)' : ''));
+    var bt = el('button', i===jaarIdx?'actief':'', (j.vast ? '🔒 ' : j.voorlopig ? '⏳ ' : '✏️ ') + 'Wachtjaar ' + j.nr);
     bt.onclick = function(){ jaarIdx=i; kop(); teken(); window.scrollTo(0,0); };
     t.appendChild(bt);
   });
@@ -118,7 +118,7 @@ function teken(){
   var j = D.jaren[jaarIdx];
   var info = el('div','blok');
   info.innerHTML = '<b>Wachtjaar ' + j.nr + '</b> · ' + j.van + ' – ' + j.tot + ' · ' + j.n + ' stafleden' +
-    (j.voorlopig ? '<br><span style="color:#5B6675">Voorlopig: data kunnen nog wijzigen. Je mag nu al gekende afwezigheden aanduiden.</span>' : '');
+    (j.voorlopig ? '<div class="voorl">⏳ <b>Ligt nog niet vast</b> – je kunt al wel je voorkeuren aanduiden. De data kunnen nog wijzigen.</div>' : '');
   if (j.vast) info.innerHTML += '<div class="slot">🔒 Deze planning ligt vast – je kunt enkel nog kijken. Je definitieve wachten kreeg je per mail.</div>';
   else if (j.deadline) info.innerHTML += j.voorbij
     ? '<div class="dl voorbij">⏰ Deadline voorbij (' + j.deadline + ') – wijzigingen tellen enkel nog zolang de planning niet vastligt.</div>'
