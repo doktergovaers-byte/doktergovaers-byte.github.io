@@ -19,7 +19,7 @@ header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid v
 .penseel{display:flex;gap:6px;margin-top:8px}
 .penseel button{flex:1;border:2px solid var(--line);background:#fff;border-radius:10px;padding:9px 4px;font-size:14px;font-weight:600;color:var(--ink)}
 .penseel button.actief{border-color:var(--kop);box-shadow:0 0 0 2px var(--kop) inset}
-.penseel .g{background:var(--gb)}.penseel .o{background:var(--ob)}.penseel .r{background:var(--rb)}
+.penseel .g{background:var(--gb)}.penseel .p{background:#1E8E4E;color:#fff}.penseel button{font-size:13px;padding:8px 2px}.dag.p{background:#1E8E4E;color:#fff}.dag.p .l,.dag.p .n{color:#fff}.dag.p .s{color:#fff;font-weight:700}.week.st-p{border-left-color:#0B5A2C;background:#F2FBF5}.chip.gr{background:#1E8E4E;color:#fff}.tipgr{flex-basis:100%;font-size:13px;color:var(--mut);margin-top:4px}.penseel .o{background:var(--ob)}.penseel .r{background:var(--rb)}
 .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.voorl{margin-top:6px;padding:7px 9px;border-radius:8px;background:#FFF4D6;border:1px solid #F0C36D;color:#6B4E00}.tabs button{flex:1 1 28%;min-width:0;padding:7px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:13px;color:var(--mut)}
 .tabs button.actief{background:var(--kop);color:#fff;border-color:var(--kop);font-weight:600}
 main{padding:10px 10px 170px;max-width:760px;margin:0 auto}
@@ -78,7 +78,7 @@ main.vast .dag,main.vast .wknr{cursor:default;opacity:.85}
 <header>
   <div class="top"><div class="wie" id="wie"></div><div id="status">✓ alles bewaard</div></div>
   <div class="penseel" role="radiogroup" aria-label="Penseel">
-    <button class="g" data-v="G">✓ Ja ik kan</button><button class="o" data-v="O">~ Liever niet</button><button class="r actief" data-v="R">✕ Absoluut niet</button>
+    <button class="p" data-v="P">♥ Graag</button><button class="g" data-v="G">✓ Ja ik kan</button><button class="o" data-v="O">~ Liever niet</button><button class="r actief" data-v="R">✕ Absoluut niet</button>
   </div>
   <div class="tabs" id="tabs"></div>
   <div id="traag">⏳ Bewaren duurt even (kan tot 30 sec. duren). Je mag verder aanduiden; sluit de pagina nog niet.</div>
@@ -88,11 +88,12 @@ main.vast .dag,main.vast .wknr{cursor:default;opacity:.85}
 <script>
 var D = null;
 var penseel = 'R', jaarIdx = 0, wijz = {}, opmW = {}, tweeW = null, timer = null, bezig = false;
+var gmaxW = null; function gmaxNu(nr){ return (gmaxW && gmaxW.nr===nr) ? gmaxW.n : Number((D.graagMax||{})[nr]||0); }
 var MAAND = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
-var SYM = {G:'✓', O:'~', R:'✕'};
+var SYM = {G:'✓', O:'~', R:'✕', P:'♥'};
 function el(t, c, txt){ var e=document.createElement(t); if(c) e.className=c; if(txt!=null) e.textContent=txt; return e; }
 function v(d){ return D.voorkeur[d] || 'G'; }
-function weekStatus(w){ var s='G'; w.dagen.forEach(function(x){ var y=v(x.d); if(y==='R') s='R'; else if(y==='O' && s!=='R') s='O'; }); return s; }
+function weekStatus(w){ var s='G'; w.dagen.forEach(function(x){ var y=v(x.d); if(y==='R') s='R'; else if(y==='O' && s!=='R') s='O'; else if(y==='P' && s==='G') s='P'; }); return s; }
 
 function heeftVast(){ return D.jaren.some(function(j){ return j.vast; }); }
 function kop(){
@@ -129,10 +130,11 @@ function teken(){
   var u = el('details','blok uitleg'); u.innerHTML = '<summary>Hoe werkt het? (30 sec.)</summary><ul>' +
     '<li>Alles staat standaard op <b>✓ Ja ik kan</b>. Duid enkel aan wat niet of liever niet lukt.</li>' +
     '<li>Kies bovenaan een kleur en <b>tik op een dag</b>. Tik op het <b>weeknummer</b> om de hele week te kleuren.</li>' +
+    '<li><b>♥ Graag</b> = weken die je graag doet. Kies daaronder hoeveel van je wachten de tool erin mag leggen. Het blijft eerlijk: je doet altijd evenveel wachten.</li>' +
     '<li>Eén ✕-dag betekent dat je die <b>hele week</b> geen wacht krijgt. Een ~-dag maakt de week "liever niet".</li>' +
     '<li>Alles wordt <b>automatisch bewaard</b>. 💬 = korte opmerking bij een week.</li>' +
     '<li>⭐ speciale week · ☀ zomer · paarse stip = feestdag · blauwe streep = schoolvakantie · 👥 = hoeveel collega\'s die week kunnen (zonder namen).</li></ul>' +
-    '<div class="leg"><span style="--c:#DDF3E4">ja ik kan</span><span style="--c:#FFE6C2">liever niet</span><span style="--c:#F9D3D3">absoluut niet</span><span style="--c:#F6C343">speciale week</span><span style="--c:#8EC5EC">schoolvakantie</span><span style="--c:#7B4BB7">feestdag</span></div>';
+    '<div class="leg"><span style="--c:#1E8E4E">graag</span><span style="--c:#DDF3E4">ja ik kan</span><span style="--c:#FFE6C2">liever niet</span><span style="--c:#F9D3D3">absoluut niet</span><span style="--c:#F6C343">speciale week</span><span style="--c:#8EC5EC">schoolvakantie</span><span style="--c:#7B4BB7">feestdag</span></div>';
   m.appendChild(u);
   var bv = el('details','blok uitleg'); bv.innerHTML = '<summary>🔒 Beveiliging &amp; gegevens</summary><ul>' +
     '<li>Je gegevens staan <b>enkel in een afgeschermd Google-blad</b> in de Google Drive van de beheerder (dr. Govaers). Dat account is beveiligd met <b>tweestapsverificatie</b> en het blad is met niemand gedeeld.</li>' +
@@ -149,6 +151,15 @@ function teken(){
   sel.value = (tweeW===null ? D.tweeWeken : tweeW) ? 'ja' : 'nee';
   sel.onchange = function(){ tweeW = sel.value==='ja'; plan(); };
   s.appendChild(sel); m.appendChild(s);
+  var s2 = el('div','blok schakel'); s2.style.flexWrap='wrap';
+  s2.appendChild(el('span','', '♥ Hoeveel van je ' + (D.wps||5) + ' wachten mag de tool in je ♥-weken leggen?'));
+  var sel2 = el('select'), opt = '<option value="0">–</option>';
+  for (var gi=1; gi<=(D.wps||5); gi++) opt += '<option value="'+gi+'">'+gi+'</option>';
+  sel2.innerHTML = opt; sel2.value = String(gmaxNu(j.nr));
+  sel2.onchange = function(){ gmaxW = {nr:j.nr, n:Number(sel2.value)}; plan(); voet(); };
+  s2.appendChild(sel2);
+  s2.appendChild(el('div','tipgr', 'Enkel nodig als je ♥-weken aanduidt. Je doet altijd ' + (D.wps||5) + ' wachten; de rest verdeelt de tool over het jaar. Geldt enkel voor wachtjaar ' + j.nr + '.'));
+  m.appendChild(s2);
 
   var vorigeMaand = '';
   j.weken.forEach(function(w){
@@ -165,7 +176,7 @@ function teken(){
 
 function weekKaart(w){
   var st = weekStatus(w);
-  var k = el('div','week' + (st==='O'?' st-o':st==='R'?' st-r':'') + (w.sp?' sp':''));
+  var k = el('div','week' + (st==='O'?' st-o':st==='R'?' st-r':st==='P'?' st-p':'') + (w.sp?' sp':''));
   k.id = 'w-' + w.k;
   var h = el('div','wkop');
   var nr = el('button','wknr','wk ' + w.wk);
@@ -175,6 +186,7 @@ function weekKaart(w){
   h.appendChild(el('span','tijd', w.van + ' → ' + w.tot));
   if (w.sp) h.appendChild(el('span','chip sp','⭐ ' + w.sp));
   if (w.zomer) h.appendChild(el('span','chip zo','☀ zomer'));
+  if (st==='P') h.appendChild(el('span','chip gr','♥ graag'));
   var t = D.tellers[w.k];
   if (t){ var c = el('span','chip tel'); c.id = 't-' + w.k; c.title='Aantal collega\'s zonder ✕ in deze week (jij inbegrepen)'; zetTeller(c, t); h.appendChild(c); }
   k.appendChild(h);
@@ -182,7 +194,7 @@ function weekKaart(w){
   var feest = [];
   w.dagen.forEach(function(x){
     var y = v(x.d);
-    var d = el('div','dag ' + (y==='O'?'o':y==='R'?'r':'') + (x.we?' we':'') + (x.v?' v':'') + (x.f?' f':''));
+    var d = el('div','dag ' + (y==='O'?'o':y==='R'?'r':y==='P'?'p':'') + (x.we?' we':'') + (x.v?' v':'') + (x.f?' f':''));
     d.setAttribute('role','button');
     d.title = x.d + (x.f ? ' · ' + x.f : '') + (x.v ? ' · ' + x.v : '');
     d.appendChild(el('div','l', x.l)); d.appendChild(el('div','n', x.n + '/' + x.m)); d.appendChild(el('div','s', SYM[y]));
@@ -213,19 +225,20 @@ function herteken(w){ var oud=document.getElementById('w-'+w.k); oud.parentNode.
 
 function voet(){
   if (jaarIdx === -1){ document.getElementById('voet').textContent = 'Vragen? Antwoord op een mail van Wachtplanning MKA.'; return; }
-  var j = D.jaren[jaarIdx], rood=0, oranje=0, spR=0, spT=0, zoR=0, zoT=0, roodDagen=0;
+  var graag=0, j = D.jaren[jaarIdx], rood=0, oranje=0, spR=0, spT=0, zoR=0, zoT=0, roodDagen=0;
   j.weken.forEach(function(w){ if (w.soort!=='WACHT') return; var s=weekStatus(w);
-    if (s==='R') rood++; else if (s==='O') oranje++;
+    if (s==='R') rood++; else if (s==='O') oranje++; else if (s==='P') graag++;
     if (w.sp){ spT++; if (s==='R') spR++; } if (w.zomer){ zoT++; if (s==='R') zoR++; } });
   Object.keys(D.voorkeur).forEach(function(d){ if (D.voorkeur[d]==='R') roodDagen++; });
   var f = document.getElementById('voet'); f.textContent='';
   function wk(n){ return n + (n===1 ? ' week' : ' weken'); }
-  f.appendChild(el('div','', 'Wachtjaar ' + j.nr + ':  ✕ ' + wk(rood) + ' geblokkeerd  ·  ~ ' + wk(oranje) + ' liever niet'));
+  f.appendChild(el('div','', 'Wachtjaar ' + j.nr + ':  ' + (graag ? '♥ ' + wk(graag) + ' graag  ·  ' : '') + '✕ ' + wk(rood) + ' geblokkeerd  ·  ~ ' + wk(oranje) + ' liever niet'));
   var w = [];
   if (D.drempel && rood >= D.drempel) w.push('Je blokkeert veel weken (' + rood + '). Kan je enkele ✕ vervangen door ~? Zo blijft een eerlijke planning mogelijk.');
   if (spT && spR === spT) w.push('Je blokkeert alle speciale weken – iedereen moet er één doen.');
   if (zoT && zoR === zoT) w.push('Je blokkeert alle zomerweken.');
   if (D.maxRood && roodDagen > D.maxRood) w.push('Meer dan ' + D.maxRood + ' dagen ✕ aangeduid (maximum).');
+  if (graag && !gmaxNu(j.nr)) w.push('Je duidde ♥-weken aan. Kies bovenaan hoeveel van je wachten de tool erin mag leggen (nu: max. 2).');
   w.forEach(function(t){ f.appendChild(el('div','w','⚠ ' + t)); });
   if (j.vast) return;
   if (D.klaar){
@@ -251,15 +264,16 @@ function status(t, soort){
   if (soort==='bezig'){ if(!traagTimer) traagTimer=setTimeout(function(){ tr.style.display='block'; }, 5000); }
   else { clearTimeout(traagTimer); traagTimer=null; tr.style.display='none'; }
 }
-function teBewaren(){ return Object.keys(wijz).length || Object.keys(opmW).length || tweeW!==null; }
+function teBewaren(){ return Object.keys(wijz).length || Object.keys(opmW).length || tweeW!==null || gmaxW!==null; }
 function plan(){ status('⏳ bewaren…','bezig'); clearTimeout(timer); timer = setTimeout(bewaar, 600); }
 function bewaar(){
   if (bezig){ plan(); return; }
-  var a = wijz, b = opmW, c = tweeW; wijz = {}; opmW = {};
-  if (!Object.keys(a).length && !Object.keys(b).length && c===null){ status('✓ alles bewaard','ok'); return; }
+  var a = wijz, b = opmW, c = tweeW, g = gmaxW; wijz = {}; opmW = {};
+  if (!Object.keys(a).length && !Object.keys(b).length && c===null && g===null){ status('✓ alles bewaard','ok'); return; }
   bezig = true;
-  stuur({actie:'bewaar', k:D.code, wijz:a, opm:b, tweeWeken:c, s:SESSIE, n:++volgnr}, function(r){
+  stuur({actie:'bewaar', k:D.code, wijz:a, opm:b, tweeWeken:c, graagMax:g, s:SESSIE, n:++volgnr}, function(r){
     bezig = false; if (c!==null){ D.tweeWeken = c; if (tweeW===c) tweeW = null; }
+    if (g!==null){ D.graagMax = D.graagMax||{}; D.graagMax[g.nr] = g.n; if (gmaxW===g) gmaxW = null; }
     if (r && r.tellers){ D.tellers = r.tellers; tellersBijwerken(); }
     if (teBewaren()) status('⏳ bewaren…','bezig'); else status('✓ bewaard ' + r.tijd,'ok');
   }, function(e){
@@ -273,8 +287,8 @@ function bewaar(){
    sendBeacon wordt door de browser afgeleverd, ook nadat de pagina dicht is. */
 function nuVersturen(){
   if (!D || !teBewaren() || (window.google && google.script && google.script.run) || !navigator.sendBeacon) return;
-  var p = JSON.stringify({actie:'bewaar', k:D.code, wijz:wijz, opm:opmW, tweeWeken:tweeW, s:SESSIE, n:++volgnr});
-  if (navigator.sendBeacon(API, new Blob([p], {type:'text/plain'}))){ wijz = {}; opmW = {}; if (tweeW!==null){ D.tweeWeken = tweeW; tweeW = null; } clearTimeout(timer); if (!bezig) status('✓ bewaard','ok'); }
+  var p = JSON.stringify({actie:'bewaar', k:D.code, wijz:wijz, opm:opmW, tweeWeken:tweeW, graagMax:gmaxW, s:SESSIE, n:++volgnr});
+  if (navigator.sendBeacon(API, new Blob([p], {type:'text/plain'}))){ wijz = {}; opmW = {}; if (tweeW!==null){ D.tweeWeken = tweeW; tweeW = null; } if (gmaxW!==null){ D.graagMax = D.graagMax||{}; D.graagMax[gmaxW.nr] = gmaxW.n; gmaxW = null; } clearTimeout(timer); if (!bezig) status('✓ bewaard','ok'); }
 }
 document.addEventListener('visibilitychange', function(){ if (document.visibilityState==='hidden') nuVersturen(); });
 window.addEventListener('pagehide', nuVersturen);
@@ -288,7 +302,7 @@ var API = 'https://script.google.com/macros/s/AKfycbzI4y9c5zt3PMUZkYFP-3d9lsGZja
 function stuur(payload, ok, fout){
   if (window.google && google.script && google.script.run){
     var r = google.script.run.withSuccessHandler(ok).withFailureHandler(fout);
-    if (payload.actie === 'bewaar') r.bewaarVoorkeuren(payload.k, payload.wijz, payload.opm, payload.tweeWeken);
+    if (payload.actie === 'bewaar') r.bewaarVoorkeuren(payload.k, payload.wijz, payload.opm, payload.tweeWeken, null, null, payload.graagMax);
     else if (payload.actie === 'klaar') r.zetKlaar(payload.k);
     else if (payload.actie === 'wissel') r.wisselActie(payload);
     else r.stuurLinkOpnieuw(payload.email);
@@ -419,7 +433,7 @@ function toonKandidaten(p, ky, lijst){
   lijst.forEach(function(c){
     var lab = el('label', c.kanRuilen ? '' : 'uit'); var x = el('input'); x.type='checkbox'; x.value=c.id; x.disabled = !c.kanRuilen;
     lab.appendChild(x); lab.appendChild(el('span','bol')); lab.lastChild.style.background = ['#1E8E4E','#F0A030','#C62828'][c.niveau];
-    var tx = el('span'); tx.appendChild(el('b','', c.naam)); tx.appendChild(el('span','sub',' · ' + SYMN[c.niveau]));
+    var tx = el('span'); tx.appendChild(el('b','', c.naam)); tx.appendChild(el('span','sub',' · ' + (c.graag ? '♥ wil die week graag' : SYMN[c.niveau])));
     if (!c.kanRuilen) tx.appendChild(el('span','w8','geen passende wacht om terug te geven'));
     c.waarsch.forEach(function(w){ tx.appendChild(el('span','w8', w)); });
     lab.appendChild(tx); l.appendChild(lab);
